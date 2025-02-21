@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        /* Previous styles remain the same */
+        .inventory-container {
+            padding: 2rem;
+            font-family: system-ui, -apple-system, sans-serif;
+        }
+
+        .view-controls {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .filter-controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            padding: 1rem;
+            background: #f5f5f5;
+            border-radius: 4px;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .inventory-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 1rem;
+        }
+
+        .inventory-table th,
+        .inventory-table td {
+            padding: 0.75rem;
+            border: 1px solid #ddd;
+            text-align: left;
+        }
+
+        .inventory-table th {
+            background-color: #fdec3f;
+            color: #0b486b;
+            cursor: pointer;
+        }
+
+        .inventory-table tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+
+        .inventory-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1rem;
+            display: none;
+        }
+
+        .grid-item {
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 1rem;
+            background: white;
+        }
+
+        .grid-item img {
+            width: 100%;
+            height: 200px;
+            object-fit: contain;
+            border-radius: 4px;
+            margin-bottom: 1rem;
+            background: #f5f5f5;
+        }
+
+        .pagination {
+            display: flex;
+            gap: 0.5rem;
+            justify-content: center;
+            margin-top: 1rem;
+        }
+
+        .pagination button {
+            padding: 0.5rem 1rem;
+            border: 1px solid #ddd;
+            background: white;
+            cursor: pointer;
+        }
+
+        .pagination button.active {
+            background: #1B3F5E;
+            color: white;
+        }
+		.inv-btn{
+		background-color: #0b486b;
+		color: #ffffff;
+		    padding: 13px 29px;
+    line-height: 17px;
+    font-size: 14px;
+	cursor: pointer;
+	font-family: Montserrat;
+    font-weight: 400;
+    font-style: normal;
+    letter-spacing: 2px;
+    border-width: 0px;
+    border-style: solid;
+    border-radius: 0px;
+    text-transform: uppercase;
+		}
+		
+		.inv-fields{
+		background-color: rgb(251, 251, 251);
+border-color: rgb(221, 221, 221);
+
+
+}
+        @media (max-width: 768px) {
+            .filter-controls {
+                flex-direction: column;
+            }
+            
+            .inventory-table {
+                display: block;
+                overflow-x: auto;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="inventory-container">
+        <div class="view-controls">
+            <button onclick="toggleView('table')" class="inv-btn active">Table View</button>
+            <button onclick="toggleView('grid')" class="inv-btn">Grid View</button>
+            <select id="entriesPerPage" onchange="updateEntriesPerPage()" class="inv-fields">
+                <option value="10">10 entries</option>
+                <option value="25">25 entries</option>
+                <option value="50">50 entries</option>
+            </select>
+        </div>
+
+        <div class="filter-controls" id="filterControls">
+            <!-- Filters will be dynamically generated -->
+        </div>
+
+        <div id="tableView">
+            <table class="inventory-table">
+                <thead>
+                    <tr>
+                        <th onclick="sortTable('locationName')" >Location Name</th>
+                        <th onclick="sortTable('siteName')">Site Name</th>
+                        <th onclick="sortTable('equipType')">Equipment Type</th>
+                        <th onclick="sortTable('size')">Size</th>
+                        <th onclick="sortTable('grade')">Grade</th>
+                        <th onclick="sortTable('available')">Available</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody">
+                    <!-- Table content will be dynamically generated -->
+                </tbody>
+            </table>
+        </div>
+
+        <div id="gridView" class="inventory-grid">
+            <!-- Grid content will be dynamically generated -->
+        </div>
+
+        <div class="pagination" id="pagination">
+            <!-- Pagination will be dynamically generated -->
+        </div>
+    </div>
+
+    <script>
+        // Container images based on size
+        const containerImages = {
+            "20'": '/images/20-new.jpg',
+            "40'": '/images/40-new.jpg',
+            'default': '/images/20-new.jpg'
+        };
+
+        // Sample inventory data (will be replaced with CSV data)
+        let inventoryData = [
+    {
+                    "locationName": "Atlanta",
+                    "siteName": "RoadOne Intermodal Logistics (",
+                    "equipType": "20GP - 20' General Purpose",
+                    "grade": "NEW",
+                    "available": "1",
+                    "size": "20'\r"
+          },
+          {
+                    "locationName": "Charleston",
+                    "siteName": "CMC/Container  Maint. Corp.- C",
+                    "equipType": "4HCF - 40' HC w/FLP & LB",
+                    "grade": "NEW",
+                    "available": "4",
+                    "size": "40'\r"
+          },
+          {
+                    "locationName": "Chicago",
+                    "siteName": "NLN Depot Inc.",
+                    "equipType": "20GP - 20' General Purpose",
+                    "grade": "IICL",
+                    "available": "1",
+                    "size": "20'\r"
+          },
+          {
+                    "locationName": "Chicago",
+                    "siteName": "NLN Depot Inc.",
+                    "equipType": "20OT - 20' OTTarp",
+                    "grade": "CW/SRVYD",
+                    "available": "1",
+                    "size": "20'\r"
+          },
+          {
+                    "locationName": "Chicago",
+                    "siteName": "NLN Depot Inc.",
+                    "equipType": "40HC - 40' HC",
+                    "grade": "ASIS",
+                    "available": "2",
+                    "size": "40'\r"
+          },
+          {
+                    "locationName": "Chicago",
+                    "siteName": "NLN Depot Inc.",
+                    "equipType": "40HC - 40' HC",
+                    "grade": "WWT",
+                    "available": "2",
+                    "size": "40'\r"
+          },
+          {
+                    "locationName": "Chicago",
+                    "siteName": "NLN Depot Inc.",
+                    "equipType": "20DU - 20' Duo-Con (2x10'SC)",
+                    "grade": "NEW",
+                    "available": "3",
+                    "size": "20'\r"
+          },
+          {
+                    "locationName": "Chicago",
+                    "siteName": "NLN Depot Inc.",
+                    "equipType": "20GP - 20' General Purpose",
+                    "grade": "NEW",
+                    "available": "3",
+                    "size": "20'\r"
+          },
+          {
+                    "locationName": "Chicago",
+                    "siteName": "10554 Munaro Prop Mgmt -Vaccar",
+                    "equipType": "4HCF - 40' HC w/FLP & LB",
+                    "grade": "NEW",
+                    "available": "3",
+                    "size": "40'\r"
+          },
+          {
+                    "locationName": "Chicago",
+                    "siteName": "10554 Munaro Prop Mgmt -Vaccar",
+                    "equipType": "20GP - 20' General Purpose",
+                    "grade": "NEW",
+                    "available": "4",
+                    "size": "20'\r"
+          }
+        ];
+
+        let currentView = 'table';
+        let currentPage = 1;
+        let entriesPerPage = 10;
+        let sortColumn = 'locationName';
+        let sortDirection = 'asc';
+        let filters = {};
+
+        // Initialize filters
+        function initializeFilters() {
+            const filterColumns = [{filter: 'locationName', title: 'Location'},{filter: 'siteName',  title: 'Site'}, {filter: 'equipType',  title: 'Type'}, {filter: 'size',  title: 'Size'}, {filter: 'grade',  title: 'Grade'}];
+	
+            const filterContainer = document.getElementById('filterControls');
+            filterContainer.innerHTML = '';
+            
+            filterColumns.forEach(column => {
+                const uniqueValues = [...new Set(inventoryData.map(item => item[column.filter]))];
+                const filterGroup = document.createElement('div');
+                filterGroup.className = 'filter-group';
+                
+                const label = document.createElement('label');
+                label.textContent = column.title.replace(/([A-Z])/g, ' $1').trim();
+                
+                const select = document.createElement('select');
+
+                select.onchange = () => applyFilters();
+                select.id = `filter-${column.filter}`;
+                
+                select.innerHTML = `
+                    <option value="">All ${label.textContent}</option>
+                    ${uniqueValues.map(value => `<option value="${value}">${value}</option>`).join('')}
+                `;
+                
+                filterGroup.appendChild(label);
+                filterGroup.appendChild(select);
+                filterContainer.appendChild(filterGroup);
+            });
+        }
+
+        // Apply filters
+        function applyFilters() {
+            const filterColumns = ['locationName', 'siteName', 'equipType', 'size', 'grade'];
+            filters = {};
+            
+            filterColumns.forEach(column => {
+                const value = document.getElementById(`filter-${column}`).value;
+                if (value) filters[column] = value;
+            });
+            
+            renderInventory();
+        }
+
+        // Sort table
+        function sortTable(column) {
+            if (sortColumn === column) {
+                sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+            } else {
+                sortColumn = column;
+                sortDirection = 'asc';
+            }
+            renderInventory();
+        }
+
+        // Toggle view
+        function toggleView(view) {
+            currentView = view;
+            document.getElementById('tableView').style.display = view === 'table' ? 'block' : 'none';
+            document.getElementById('gridView').style.display = view === 'grid' ? 'grid' : 'none';
+            renderInventory();
+        }
+
+        // Update entries per page
+        function updateEntriesPerPage() {
+            entriesPerPage = parseInt(document.getElementById('entriesPerPage').value);
+            currentPage = 1;
+            renderInventory();
+        }
+
+        // Render inventory
+        function renderInventory() {
+            // Apply filters
+            let filteredData = inventoryData.filter(item => {
+                return Object.entries(filters).every(([key, value]) => item[key] === value);
+            });
+
+            // Apply sorting
+            filteredData.sort((a, b) => {
+                const aVal = a[sortColumn];
+                const bVal = b[sortColumn];
+                return sortDirection === 'asc' 
+                    ? aVal.localeCompare(bVal)
+                    : bVal.localeCompare(aVal);
+            });
+
+            // Calculate pagination
+            const totalPages = Math.ceil(filteredData.length / entriesPerPage);
+            const startIndex = (currentPage - 1) * entriesPerPage;
+            const endIndex = startIndex + entriesPerPage;
+            const pageData = filteredData.slice(startIndex, endIndex);
+
+            // Render view
+            if (currentView === 'table') {
+                renderTableView(pageData);
+            } else {
+                renderGridView(pageData);
+            }
+
+            renderPagination(totalPages);
+        }
+
+        // Render table view
+        function renderTableView(data) {
+            const tbody = document.getElementById('tableBody');
+            tbody.innerHTML = data.map(item => `
+                <tr>
+                    <td>${item.locationName}</td>
+                    <td>${item.siteName}</td>
+                    <td>${item.equipType}</td>
+                    <td>${item.size}</td>
+                    <td>${item.grade}</td>
+                    <td>${item.available}</td>
+                </tr>
+            `).join('');
+        }
+
+        // Render grid view
+        function renderGridView(data) {
+            const grid = document.getElementById('gridView');
+            grid.innerHTML = data.map(item => `
+                <div class="grid-item">
+                    <img src="${containerImages[item.size] || containerImages.default}" 
+                         alt="${item.equipType}">
+                    <h3>${item.equipType}</h3>
+                    <p><strong>Location:</strong> ${item.locationName}</p>
+                    <p><strong>Site:</strong> ${item.siteName}</p>
+                    <p><strong>Size:</strong> ${item.size}</p>
+                    <p><strong>Grade:</strong> ${item.grade}</p>
+                    <p><strong>Available:</strong> ${item.available}</p>
+                </div>
+            `).join('');
+        }
+
+        // Render pagination
+        function renderPagination(totalPages) {
+            const pagination = document.getElementById('pagination');
+            pagination.innerHTML = `
+                <button onclick="changePage(1)">First</button>
+                <button onclick="changePage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>Previous</button>
+                ${Array.from({length: totalPages}, (_, i) => i + 1)
+                    .map(page => `
+                        <button onclick="changePage(${page})" 
+                                class="${page === currentPage ? 'active' : ''}">${page}</button>
+                    `).join('')}
+                <button onclick="changePage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}>Next</button>
+                <button onclick="changePage(${totalPages})">Last</button>
+            `;
+        }
+
+        // Change page
+        function changePage(page) {
+            currentPage = page;
+            renderInventory();
+        }
+
+        // Initialize the inventory
+        document.addEventListener('DOMContentLoaded', () => {
+            // In WordPress, you would fetch the CSV data here and parse it
+            // For now, we'll use the sample data
+            initializeFilters();
+            renderInventory();
+        });
+
+        // Function to update inventory data (can be called from WordPress)
+        function updateInventoryData(newData) {
+            inventoryData = newData;
+            initializeFilters();
+            renderInventory();
+        }
+    </script>
+</body>
+</html>
